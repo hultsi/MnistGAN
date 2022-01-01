@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include "statpack.h"
 
 int main(int argc, char *argv[]) {
     std::cout << "Running...\n";

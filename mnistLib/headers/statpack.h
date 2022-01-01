@@ -9,6 +9,26 @@
 namespace statpack {
     float randomFloat(float min, float max);
     int randomInt(int min, int max);
+
+    struct Random {
+    public:
+        static void seed() {
+            engine.seed(rd());
+        }
+
+        static int Int(int min, int max) {
+            std::uniform_int_distribution<int> dist(min,max);
+            return dist(engine);
+        }
+
+        static float Float(float min, float max) {
+            static std::uniform_real_distribution<float> dist(min,max);
+            return dist(engine);
+        }
+    private:
+        inline static std::random_device rd;
+        inline static std::mt19937 engine;
+    };
 }
 
 namespace statpack {
@@ -147,8 +167,8 @@ namespace statpack {
         // horizontal rescale
         for (int row = 0; row < H_IN; ++row) {
             for (int pixel = 0; pixel < W_IN; ++pixel) {
-                int thisPixel = std::ceil(xScale * pixel );
-                int nextPixel = std::ceil(xScale * (pixel + 1));
+                const int thisPixel = std::ceil(xScale * pixel );
+                const int nextPixel = std::ceil(xScale * (pixel + 1));
                 
                 for (int i = thisPixel; i < nextPixel; ++i) {
                     tmp.at(i + row * W_OUT) = img.at(pixel + row * W_IN);
@@ -160,8 +180,8 @@ namespace statpack {
         // vertical rescale
         for (int col = 0; col < W_OUT; ++col) {
             for (int pixel = 0; pixel < H_IN; ++pixel) {
-                int thisPixel = std::ceil(yScale * pixel );
-                int nextPixel = std::ceil(yScale * (pixel + 1));
+                const int thisPixel = std::ceil(yScale * pixel );
+                const int nextPixel = std::ceil(yScale * (pixel + 1));
                 
                 for (int i = thisPixel; i < nextPixel; ++i) {
                     out.at(col + i * W_OUT) = tmp.at(col + pixel * W_OUT);
@@ -180,8 +200,8 @@ namespace statpack {
         // horizontal rescale
         for (int row = 0; row < height; ++row) {
             for (int pixel = 0; pixel < width; ++pixel) {
-                int thisPixel = std::ceil(xScale * pixel );
-                int nextPixel = std::ceil(xScale * (pixel + 1));
+                const int thisPixel = std::ceil(xScale * pixel );
+                const int nextPixel = std::ceil(xScale * (pixel + 1));
                 
                 for (int i = thisPixel; i < nextPixel; ++i) {
                     if (i + row *W_OUT >= W_OUT*H_OUT) {
@@ -196,8 +216,8 @@ namespace statpack {
         // vertical rescale
         for (int col = 0; col < W_OUT; ++col) {
             for (int pixel = 0; pixel < height; ++pixel) {
-                int thisPixel = std::ceil(yScale * pixel );
-                int nextPixel = std::ceil(yScale * (pixel + 1));
+                const int thisPixel = std::ceil(yScale * pixel );
+                const int nextPixel = std::ceil(yScale * (pixel + 1));
                 
                 for (int i = thisPixel; i < nextPixel; ++i) {
                     if (col + i * W_OUT >= W_OUT*H_OUT) {
