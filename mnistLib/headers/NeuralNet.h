@@ -1,41 +1,64 @@
 #pragma once
 
 #include <fstream>
-#include <array>
 #include <vector>
-#include <string>
-#include <tuple>
+#include <cstddef>
+#include <cassert>
 
 #include "statpack.h"
 #include "mnistParser.h"
-#include "variadics.h"
 
-namespace mnistGAN {
-    template <int FIRST, int... REST>
-    class NeuralNet {
-    public:
-        static constexpr int LAYERS = 1 + sizeof...(REST);
-        static constexpr int WEIGHTS = LAYERS - 1;
-        static constexpr int BIASES = LAYERS - 1;
+class NeuralNet {
+public:
+    struct Layer {
+        size_t sizeIn;
+        size_t sizeOut;
+        std::vector<float> nodes;
+        std::vector<float> delta_nodes;
+        std::vector<std::vector<float>> weights;
+        std::vector<std::vector<float>> delta_weights;
+        std::vector<float> biases;
+        std::vector<float> delta_biases;
 
-        std::array<float, variadics::Sum<FIRST, REST...>::value> nodes;
-        static constexpr int test = variadics::Last<FIRST, REST...>::value;
-        NeuralNet() {}
+        Layer(size_t size) : sizeIn(size) { 
+            nodes.resize(size);
+        };
+
+        void forward() {
+            for (int i = 0; i < sizeOut; ++i) {
+                // wSum1[i] = statpack::weightedSum<inputLayerSize>(inputs, weights1[i]) + bias1[i];
+                // hiddenNeuron1[i] = statpack::sigmoid(wSum1[i]);
+            }
+        }
+
+        void backward() {
+
+        }
     };
-}
+    std::vector<Layer> layers;
+    
+    NeuralNet() {};
 
-// template <int... SIZE>
-// class NeuralNet {
-// public:
-//     using array_tuple = std::tuple<std::array<float,SIZE>...>;
+    void addLayer(size_t size) {
+        layers.emplace_back(Layer(size));
+    }
 
-//     static constexpr int LAYERS = std::tuple_size<array_tuple>{};
-//     static constexpr int WEIGHTS = LAYERS - 1;
-//     static constexpr int BIASES = LAYERS - 1;
+    void build() {
+        assert(layers.size() >= 2 && "NeuralNet requires at least 2 layers (input & output) to work)");
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            layers[i].biases.resize(layers[i+1].sizeIn);
+            layers[i].delta_biases.resize(layers[i+1].sizeIn);
+            layers[i].weights.resize(layers[i].sizeIn);
+            layers[i].delta_weights.resize(layers[i].sizeIn);
+            layers[i].sizeOut = layers[i + 1].sizeIn;
+            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
+                layers[i].weights[k].resize(layers[i].sizeOut);
+                layers[i].delta_weights[k].resize(layers[i].sizeOut);
+            }
+        }
+        for (size_t i = 1; i < layers.size() - 1; ++i) {
+            layers[i].delta_nodes.resize(layers[i].sizeIn);
+        }
+    }
 
-//     array_tuple layers{};
-//     typename tupleRemove::last<array_tuple>::type weights;
-//     typename tupleRemove::last<array_tuple>::type biases;
-
-//     NeuralNet() {}
-// };
+};
