@@ -9,12 +9,15 @@ int main(int argc, char *argv[]) {
     if (argc >= 3) {
         images = argv[1];
     }
-    mnistGAN::NeuralNet<2,4,6,123> nn;
+    // mnistGAN::NeuralNet<2,4,6> nn;
+    // std::cout << nn.LAYERS << "\n";
+    // std::cout << std::get<0>(nn.layers).size() << "\n";
+    // std::cout << std::get<1>(nn.layers).size() << "\n";
+    // std::cout << std::get<0>(nn.weights).size() << "\n";
+    mnistGAN::NeuralNet<1,22,13> nn;
     std::cout << nn.LAYERS << "\n";
-    std::cout << std::get<0>(nn.layer).size() << "\n";
-    std::cout << std::get<1>(nn.layer).size() << "\n";
-    std::cout << std::get<2>(nn.layer).size() << "\n";
-    std::cout << std::get<3>(nn.layer).size() << "\n";
+    std::cout << nn.nodes.size() << "\n";
+    std::cout << nn.test << "\n"; 
     std::cout << "Ending...\n";
     return 0;
 }
