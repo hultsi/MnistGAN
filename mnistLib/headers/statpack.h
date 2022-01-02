@@ -7,13 +7,14 @@
 #include <iostream>
 
 namespace statpack {
-    float randomFloat(float min, float max);
-    int randomInt(int min, int max);
-
     struct Random {
     public:
         static void seed() {
             engine.seed(rd());
+        }
+
+        static void seed(unsigned int value) {
+            engine.seed(value);
         }
 
         static int Int(int min, int max) {
@@ -25,6 +26,12 @@ namespace statpack {
             static std::uniform_real_distribution<float> dist(min,max);
             return dist(engine);
         }
+
+        static double Double(double min, double max) {
+            static std::uniform_real_distribution<double> dist(min,max);
+            return dist(engine);
+        }
+
     private:
         inline static std::random_device rd;
         inline static std::mt19937 engine;
