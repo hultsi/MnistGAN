@@ -7,7 +7,7 @@
 #include <iostream>
 
 namespace statpack {
-    struct Random {
+    class Random {
     public:
         static void seed() {
             engine.seed(rd());
@@ -36,8 +36,14 @@ namespace statpack {
         inline static std::random_device rd;
         inline static std::mt19937 engine;
     };
+
+    float weightedSum(std::vector<float> input, std::vector<float> weights);
 }
 
+
+/*
+ * std::array template implementations
+ **/
 namespace statpack {
     template <typename T>
     struct ImageVector {

@@ -24,11 +24,8 @@ public:
             nodes.resize(size);
         };
 
-        void forward() {
-            for (int i = 0; i < sizeOut; ++i) {
-                // wSum1[i] = statpack::weightedSum<inputLayerSize>(inputs, weights1[i]) + bias1[i];
-                // hiddenNeuron1[i] = statpack::sigmoid(wSum1[i]);
-            }
+        float forward(int nodeIndex) {
+            return statpack::weightedSum(nodes, weights[nodeIndex]) + biases[nodeIndex];
         }
 
         void backward() {
@@ -44,21 +41,26 @@ public:
     }
 
     void build() {
+#ifdef CUSTOM_DEBUG
         assert(layers.size() >= 2 && "NeuralNet requires at least 2 layers (input & output) to work)");
+#endif
         for (size_t i = 0; i < layers.size() - 1; ++i) {
-            layers[i].biases.resize(layers[i+1].sizeIn);
-            layers[i].delta_biases.resize(layers[i+1].sizeIn);
-            layers[i].weights.resize(layers[i].sizeIn);
-            layers[i].delta_weights.resize(layers[i].sizeIn);
-            layers[i].sizeOut = layers[i + 1].sizeIn;
-            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
-                layers[i].weights[k].resize(layers[i].sizeOut);
-                layers[i].delta_weights[k].resize(layers[i].sizeOut);
+            layers.at(i).biases.resize(layers[i+1].sizeIn);
+            layers.at(i).delta_biases.resize(layers[i+1].sizeIn);
+            layers.at(i).weights.resize(layers.at(i).sizeIn);
+            layers.at(i).delta_weights.resize(layers.at(i).sizeIn);
+            layers.at(i).sizeOut = layers[i + 1].sizeIn;
+            for (size_t k = 0; k < layers.at(i).sizeIn; ++k) {
+                layers.at(i).weights[k].resize(layers.at(i).sizeOut);
+                layers.at(i).delta_weights[k].resize(layers.at(i).sizeOut);
             }
         }
         for (size_t i = 1; i < layers.size() - 1; ++i) {
-            layers[i].delta_nodes.resize(layers[i].sizeIn);
+            layers.at(i).delta_nodes.resize(layers.at(i).sizeIn);
         }
     }
 
+    void train() {
+
+    }
 };

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE DEBUG)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DCUSTOM_DEBUG")
 
 # specify compilers
 set(CMAKE_C_COMPILER gcc)
