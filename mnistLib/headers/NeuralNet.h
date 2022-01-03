@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstddef>
 #include <cassert>
+#include <iostream>
 
 #include "statpack.h"
 #include "mnistParser.h"
@@ -32,7 +33,6 @@ public:
 
         }
     };
-    std::vector<Layer> layers;
     
     NeuralNet() {};
 
@@ -45,22 +45,49 @@ public:
         assert(layers.size() >= 2 && "NeuralNet requires at least 2 layers (input & output) to work)");
 #endif
         for (size_t i = 0; i < layers.size() - 1; ++i) {
-            layers.at(i).biases.resize(layers[i+1].sizeIn);
-            layers.at(i).delta_biases.resize(layers[i+1].sizeIn);
-            layers.at(i).weights.resize(layers.at(i).sizeIn);
-            layers.at(i).delta_weights.resize(layers.at(i).sizeIn);
-            layers.at(i).sizeOut = layers[i + 1].sizeIn;
-            for (size_t k = 0; k < layers.at(i).sizeIn; ++k) {
-                layers.at(i).weights[k].resize(layers.at(i).sizeOut);
-                layers.at(i).delta_weights[k].resize(layers.at(i).sizeOut);
+            // Biases
+            layers[i].biases.resize(layers[i+1].sizeIn);
+            layers[i].delta_biases.resize(layers[i+1].sizeIn);
+            // Weights
+            layers[i].sizeOut = layers[i + 1].sizeIn;
+            layers[i].weights.resize(layers[i].sizeOut);
+            layers[i].delta_weights.resize(layers[i].sizeOut);
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                layers[i].weights[k].resize(layers[i].sizeIn);
+                layers[i].delta_weights[k].resize(layers[i].sizeIn);
             }
         }
         for (size_t i = 1; i < layers.size() - 1; ++i) {
-            layers.at(i).delta_nodes.resize(layers.at(i).sizeIn);
+            layers[i].delta_nodes.resize(layers[i].sizeIn);
+        }
+    }
+
+    void randomizeWeightsAndBiases() {
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t m = 0; m < layers[i].biases.size(); ++m) {
+                layers[i].biases[m] = statpack::Random::Float(-1, 1);
+            }
+            for (size_t m = 0; m < layers[i].weights.size(); ++m) {
+                for (size_t k = 0; k < layers[i].weights[m].size(); ++k) {
+                    layers[i].weights[m][k] = statpack::Random::Float(-1, -1);
+                }
+            }
         }
     }
 
     void train() {
+        // Forward propagation
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                const float wSum = layers[i].forward(k);
+                layers[i+1].nodes[k] = statpack::sigmoid(wSum);
+            }
+        }
+
+        // Backward propagation
 
     }
+
+private:
+    std::vector<Layer> layers;
 };

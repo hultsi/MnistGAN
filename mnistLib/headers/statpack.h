@@ -4,7 +4,6 @@
 #include <vector>
 #include <random>
 #include <cmath>
-#include <iostream>
 
 namespace statpack {
     class Random {
@@ -58,7 +57,7 @@ namespace statpack {
     }
 
     template <typename T>
-    T sigmoidDerivative(T x) {
+    T dSigmoid(T x) {
         const T s = sigmoid(x);
         return s * (static_cast<T>(1) - s);
     }
