@@ -69,9 +69,9 @@ namespace statpack {
 namespace statpack {
     template <typename T>
     T mse(std::vector<T> observed, std::vector<T> predicted) {
-#ifdef CUSTOM_DEBUG
-        assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
-#endif
+        #ifdef CUSTOM_DEBUG
+            assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
+        #endif
         float mse = 0;
         for (size_t i = 0; i < observed.size(); ++i) {
             mse += std::pow(observed[i] - predicted[i], 2);

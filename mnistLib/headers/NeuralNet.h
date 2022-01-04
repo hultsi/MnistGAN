@@ -14,8 +14,9 @@ class NeuralNet {
 public:
     float loss;
     size_t epochLength;
+
     std::function<float(std::vector<float>, std::vector<float>)> costFunction;
-    std::function<float(std::vector<float>, std::vector<float>)> dCostFunction;
+    std::function<float(float, float)> dCostFunction;
 
     struct Layer {
         size_t sizeIn;
@@ -36,8 +37,8 @@ public:
 
     NeuralNet() : 
         loss(0), 
-        costFunction(std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2)),
-        dCostFunction(std::bind(statpack::dMse<float>, std::placeholders::_1, std::placeholders::_2))
+        costFunction(CostFunctions::mse),
+        dCostFunction(CostFunctions::dMse)
     {}
 
     void addLayer(size_t size) {
@@ -48,6 +49,13 @@ public:
 #ifdef CUSTOM_DEBUG
         assert(layers.size() >= 2 && "NeuralNet requires at least 2 layers (input & output) to work)");
 #endif
+        if (!costFunction || dCostFunction) {
+            costFunction = std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2);
+            dCostFunction = [](float observed, float predicted) -> float {
+                return std::pow(observed - predicted, 2);
+            };
+        }
+
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             // Biases
             layers[i].biases.resize(layers[i+1].sizeIn);
@@ -98,16 +106,43 @@ public:
 
         // Back propagation...
         // First layer calculation differs from the rest
-        const float bpTerm = dCostFunction(target, layers[layers.size()- 1].nodes);
+        for (size_t i = layers.size() - 1; i > 0; --i) {
+            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
+                const float bpTerm = statpack::dSigmoid(layers[i].wSum[k]) * dCostFunction(layers[i].nodes[k], target[k]);
+                // TOdo: continue...
+            }
+        }
     }
 
     void setCostFunction(std::string name) {
         if (name == "mse") {
-            costFunction = std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2);
-            dCostFunction = std::bind(statpack::dMse<float>, std::placeholders::_1, std::placeholders::_2);
+            costFunction = CostFunctions::mse;
+            dCostFunction = CostFunctions::dMse;
         }
     }
 
 private:
     std::vector<Layer> layers;
+
+    struct CostFunctions {
+        /**
+         *  The derivatives here are for a _single index_
+         *  and _not_ over a whole set of points (since that is what we need)
+         */
+
+        static float mse(std::vector<float> observed, std::vector<float> predicted) {
+            #ifdef CUSTOM_DEBUG
+                assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
+            #endif
+            float mse = 0;
+            for (size_t i = 0; i < observed.size(); ++i) {
+                mse += std::pow(observed[i] - predicted[i], 2);
+            }
+            return mse / observed.size();
+        }
+
+        static float dMse(float observed, float predicted) {
+            return 2 * (observed - predicted);
+        }
+    };
 };
