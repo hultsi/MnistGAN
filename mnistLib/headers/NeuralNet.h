@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <cstddef>
+#include <functional>
 #include <cassert>
 #include <iostream>
 
@@ -11,6 +12,11 @@
 
 class NeuralNet {
 public:
+    float loss;
+    size_t epochLength;
+    std::function<float(std::vector<float>, std::vector<float>)> costFunction;
+    std::function<float(std::vector<float>, std::vector<float>)> dCostFunction;
+
     struct Layer {
         size_t sizeIn;
         size_t sizeOut;
@@ -20,21 +26,19 @@ public:
         std::vector<std::vector<float>> delta_weights;
         std::vector<float> biases;
         std::vector<float> delta_biases;
+        std::vector<float> wSum;
 
         Layer(size_t size) : sizeIn(size) { 
             nodes.resize(size);
         };
-
-        float forward(int nodeIndex) {
-            return statpack::weightedSum(nodes, weights[nodeIndex]) + biases[nodeIndex];
-        }
-
-        void backward() {
-
-        }
     };
     
-    NeuralNet() {};
+
+    NeuralNet() : 
+        loss(0), 
+        costFunction(std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2)),
+        dCostFunction(std::bind(statpack::dMse<float>, std::placeholders::_1, std::placeholders::_2))
+    {}
 
     void addLayer(size_t size) {
         layers.emplace_back(Layer(size));
@@ -56,6 +60,9 @@ public:
                 layers[i].weights[k].resize(layers[i].sizeIn);
                 layers[i].delta_weights[k].resize(layers[i].sizeIn);
             }
+            if (i > 0) {
+                layers[i].wSum.resize(layers[i].sizeIn);
+            }
         }
         for (size_t i = 1; i < layers.size() - 1; ++i) {
             layers[i].delta_nodes.resize(layers[i].sizeIn);
@@ -75,17 +82,30 @@ public:
         }
     }
 
-    void train() {
-        // Forward propagation
+    void train(std::vector<float> target) {
+#ifdef CUSTOM_DEBUG
+        assert(target.size() == layers[layers.size()-1].nodes.size() && "Target and ouput vectors have different lengths.");
+#endif
+        // Forward propagation...
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             for (size_t k = 0; k < layers[i].sizeOut; ++k) {
-                const float wSum = layers[i].forward(k);
-                layers[i+1].nodes[k] = statpack::sigmoid(wSum);
+                layers[i+1].wSum[i] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
+                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[i]);
             }
         }
 
-        // Backward propagation
+        loss = costFunction(target, layers[layers.size()- 1].nodes);
 
+        // Back propagation...
+        // First layer calculation differs from the rest
+        const float bpTerm = dCostFunction(target, layers[layers.size()- 1].nodes);
+    }
+
+    void setCostFunction(std::string name) {
+        if (name == "mse") {
+            costFunction = std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2);
+            dCostFunction = std::bind(statpack::dMse<float>, std::placeholders::_1, std::placeholders::_2);
+        }
     }
 
 private:

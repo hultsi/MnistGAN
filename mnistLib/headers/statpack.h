@@ -2,8 +2,10 @@
 
 #include <array>
 #include <vector>
+#include <functional>
 #include <random>
 #include <cmath>
+#include <cassert>
 
 namespace statpack {
     class Random {
@@ -35,13 +37,11 @@ namespace statpack {
         inline static std::random_device rd;
         inline static std::mt19937 engine;
     };
-
-    float weightedSum(std::vector<float> input, std::vector<float> weights);
 }
 
 
 /*
- * std::array template implementations
+ * General templates
  **/
 namespace statpack {
     template <typename T>
@@ -61,7 +61,92 @@ namespace statpack {
         const T s = sigmoid(x);
         return s * (static_cast<T>(1) - s);
     }
+}
 
+/**
+ *  Vector templates 
+ */
+namespace statpack {
+    template <typename T>
+    T mse(std::vector<T> observed, std::vector<T> predicted) {
+#ifdef CUSTOM_DEBUG
+        assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
+#endif
+        float mse = 0;
+        for (size_t i = 0; i < observed.size(); ++i) {
+            mse += std::pow(observed[i] - predicted[i], 2);
+        }
+        return mse / observed.size();
+    }
+
+    template <typename T>
+    T dMse(std::vector<T> observed, std::vector<T> predicted) {
+#ifdef CUSTOM_DEBUG
+        assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
+#endif
+        float mse = 0;
+        for (size_t i = 0; i < observed.size(); ++i) {
+            mse += 2 * (observed[i] - predicted[i]);
+        }
+        return mse / observed.size();
+    }
+
+    template <typename T>
+    float weightedSum(std::vector<T> inputs, std::vector<T> weights) {
+#ifdef CUSTOM_DEBUG
+        assert(!(inputs.size() != weights.size()) && "Vector sizes are not equal.");
+#endif
+        float wSum = 0;
+        for (size_t i = 0; i < inputs.size(); i++) {
+            wSum += weights[i] * inputs[i];
+        }
+        return wSum;
+    }
+
+    template <typename K, int W_OUT, int H_OUT>
+    std::array<K, W_OUT*H_OUT> rescaleImage(std::vector<K> img, int width, int height) {
+        std::array<K, W_OUT*H_OUT> tmp{};
+        const float xScale = static_cast<float>(W_OUT) / static_cast<float>(width);
+        const float yScale = static_cast<float>(H_OUT) / static_cast<float>(height);
+
+        // horizontal rescale
+        for (int row = 0; row < height; ++row) {
+            for (int pixel = 0; pixel < width; ++pixel) {
+                const int thisPixel = std::ceil(xScale * pixel );
+                const int nextPixel = std::ceil(xScale * (pixel + 1));
+                
+                for (int i = thisPixel; i < nextPixel; ++i) {
+                    if (i + row *W_OUT >= W_OUT*H_OUT) {
+                        break;
+                    }
+                    tmp.at(i + row * W_OUT) = img.at(pixel + row * width);
+                }
+            }
+        }
+        
+        std::array<K, W_OUT*H_OUT> out{};
+        // vertical rescale
+        for (int col = 0; col < W_OUT; ++col) {
+            for (int pixel = 0; pixel < height; ++pixel) {
+                const int thisPixel = std::ceil(yScale * pixel );
+                const int nextPixel = std::ceil(yScale * (pixel + 1));
+                
+                for (int i = thisPixel; i < nextPixel; ++i) {
+                    if (col + i * W_OUT >= W_OUT*H_OUT) {
+                        break;
+                    }
+                    out.at(col + i * W_OUT) = tmp.at(col + pixel * W_OUT);
+                }
+            }
+        }
+        return out;
+    }
+}
+
+/**
+ *  Array templates 
+ */
+namespace statpack {
     template <int T>
     float mean(const std::array<float, T> &inputs) {
         float y = 0;
@@ -196,45 +281,6 @@ namespace statpack {
                 const int nextPixel = std::ceil(yScale * (pixel + 1));
                 
                 for (int i = thisPixel; i < nextPixel; ++i) {
-                    out.at(col + i * W_OUT) = tmp.at(col + pixel * W_OUT);
-                }
-            }
-        }
-        return out;
-    }
-
-    template <typename K, int W_OUT, int H_OUT>
-    std::array<K, W_OUT*H_OUT> rescaleImage(std::vector<K> img, int width, int height) {
-        std::array<K, W_OUT*H_OUT> tmp{};
-        const float xScale = static_cast<float>(W_OUT) / static_cast<float>(width);
-        const float yScale = static_cast<float>(H_OUT) / static_cast<float>(height);
-
-        // horizontal rescale
-        for (int row = 0; row < height; ++row) {
-            for (int pixel = 0; pixel < width; ++pixel) {
-                const int thisPixel = std::ceil(xScale * pixel );
-                const int nextPixel = std::ceil(xScale * (pixel + 1));
-                
-                for (int i = thisPixel; i < nextPixel; ++i) {
-                    if (i + row *W_OUT >= W_OUT*H_OUT) {
-                        break;
-                    }
-                    tmp.at(i + row * W_OUT) = img.at(pixel + row * width);
-                }
-            }
-        }
-        
-        std::array<K, W_OUT*H_OUT> out{};
-        // vertical rescale
-        for (int col = 0; col < W_OUT; ++col) {
-            for (int pixel = 0; pixel < height; ++pixel) {
-                const int thisPixel = std::ceil(yScale * pixel );
-                const int nextPixel = std::ceil(yScale * (pixel + 1));
-                
-                for (int i = thisPixel; i < nextPixel; ++i) {
-                    if (col + i * W_OUT >= W_OUT*H_OUT) {
-                        break;
-                    }
                     out.at(col + i * W_OUT) = tmp.at(col + pixel * W_OUT);
                 }
             }

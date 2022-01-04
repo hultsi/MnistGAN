@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "NeuralNet.h"
+#include "statpack.h"
 
 int main(int argc, char *argv[]) {
     std::cout << "Running...\n";
@@ -13,7 +14,7 @@ int main(int argc, char *argv[]) {
     nn.addLayer(2);
     nn.build();
     nn.randomizeWeightsAndBiases();
-    nn.train();
+    // nn.train();
     std::cout << "Ending...\n";
     return 0;
 }
