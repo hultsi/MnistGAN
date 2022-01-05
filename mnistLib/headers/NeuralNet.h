@@ -15,7 +15,7 @@ public:
     float loss;
     size_t epochLength;
 
-    std::function<float(std::vector<float>, std::vector<float>)> costFunction;
+    std::function<float(const std::vector<float>&, const std::vector<float>&)> costFunction;
     std::function<float(float, float)> dCostFunction;
 
     struct Layer {
@@ -49,13 +49,6 @@ public:
 #ifdef CUSTOM_DEBUG
         assert(layers.size() >= 2 && "NeuralNet requires at least 2 layers (input & output) to work)");
 #endif
-        if (!costFunction || dCostFunction) {
-            costFunction = std::bind(statpack::mse<float>, std::placeholders::_1, std::placeholders::_2);
-            dCostFunction = [](float observed, float predicted) -> float {
-                return std::pow(observed - predicted, 2);
-            };
-        }
-
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             // Biases
             layers[i].biases.resize(layers[i+1].sizeIn);
@@ -90,28 +83,14 @@ public:
         }
     }
 
-    void train(std::vector<float> target) {
+    void train(const std::vector<float> &target) {
 #ifdef CUSTOM_DEBUG
         assert(target.size() == layers[layers.size()-1].nodes.size() && "Target and ouput vectors have different lengths.");
 #endif
-        // Forward propagation...
-        for (size_t i = 0; i < layers.size() - 1; ++i) {
-            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
-                layers[i+1].wSum[i] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
-                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[i]);
-            }
-        }
-
+        forwardPropagate();
         loss = costFunction(target, layers[layers.size()- 1].nodes);
-
-        // Back propagation...
-        // First layer calculation differs from the rest
-        for (size_t i = layers.size() - 1; i > 0; --i) {
-            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
-                const float bpTerm = statpack::dSigmoid(layers[i].wSum[k]) * dCostFunction(layers[i].nodes[k], target[k]);
-                // TOdo: continue...
-            }
-        }
+        backPropagate(target);
+        applyDeltas();
     }
 
     void setCostFunction(std::string name) {
@@ -129,8 +108,7 @@ private:
          *  The derivatives here are for a _single index_
          *  and _not_ over a whole set of points (since that is what we need)
          */
-
-        static float mse(std::vector<float> observed, std::vector<float> predicted) {
+        static float mse(const std::vector<float> &observed, const std::vector<float> &predicted) {
             #ifdef CUSTOM_DEBUG
                 assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
             #endif
@@ -145,4 +123,44 @@ private:
             return 2 * (observed - predicted);
         }
     };
+
+    void forwardPropagate() {
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                layers[i+1].wSum[i] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
+                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[i]);
+            }
+        }
+    }
+
+    void backPropagate(const std::vector<float>& target) {
+        const float epoch = static_cast<float>(epochLength);
+        const size_t lastLayer = layers.size() - 1;
+        for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
+            const float bpTerm = statpack::dSigmoid(layers[lastLayer].wSum[k]) * dCostFunction(layers[lastLayer].nodes[k], target[k]);
+            for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
+                layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
+                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm;
+            }
+            layers[lastLayer - 1].delta_biases[k] += bpTerm / epoch;
+        }
+
+        if (lastLayer - 1 == 0) return;
+        
+        for (size_t i = layers.size() - 2; i > 0; --i) {
+            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
+                const float bpTerm = statpack::dSigmoid(layers[i].wSum[k]) * layers[i].delta_nodes[k];
+                for (size_t n = 0; n < layers[i - 1].sizeIn; ++n) {
+                    layers[i - 1].delta_weights[k][n] += layers[i - 1].nodes[n] * bpTerm / epoch;
+                    layers[i - 1].delta_nodes[n] += layers[i - 1].weights[k][n] * bpTerm;
+                }
+                layers[i - 1].delta_biases[k] += bpTerm / epoch;
+                layers[i].delta_nodes[k] = 0;
+            }
+        }
+    }
+
+    void applyDeltas() {
+
+    }
 };

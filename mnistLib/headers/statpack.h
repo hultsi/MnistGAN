@@ -68,7 +68,7 @@ namespace statpack {
  */
 namespace statpack {
     template <typename T>
-    T mse(std::vector<T> observed, std::vector<T> predicted) {
+    T mse(std::vector<T> &observed, std::vector<T> &predicted) {
         #ifdef CUSTOM_DEBUG
             assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
         #endif
@@ -80,7 +80,7 @@ namespace statpack {
     }
 
     template <typename T>
-    T dMse(std::vector<T> observed, std::vector<T> predicted) {
+    T dMse(std::vector<T> &observed, std::vector<T> &predicted) {
 #ifdef CUSTOM_DEBUG
         assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
 #endif
@@ -92,7 +92,7 @@ namespace statpack {
     }
 
     template <typename T>
-    float weightedSum(std::vector<T> inputs, std::vector<T> weights) {
+    float weightedSum(std::vector<T>& inputs, std::vector<T> &weights) {
 #ifdef CUSTOM_DEBUG
         assert(!(inputs.size() != weights.size()) && "Vector sizes are not equal.");
 #endif
@@ -104,7 +104,7 @@ namespace statpack {
     }
 
     template <typename K, int W_OUT, int H_OUT>
-    std::array<K, W_OUT*H_OUT> rescaleImage(std::vector<K> img, int width, int height) {
+    std::array<K, W_OUT*H_OUT> rescaleImage(std::vector<K> &img, int width, int height) {
         std::array<K, W_OUT*H_OUT> tmp{};
         const float xScale = static_cast<float>(W_OUT) / static_cast<float>(width);
         const float yScale = static_cast<float>(H_OUT) / static_cast<float>(height);
