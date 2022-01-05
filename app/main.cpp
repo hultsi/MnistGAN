@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     nn.addLayer(2);
     nn.build();
     nn.randomizeWeightsAndBiases();
-    // nn.train();
+    nn.train({1,2});
     std::cout << "Ending...\n";
     return 0;
 }

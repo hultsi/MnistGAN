@@ -12,6 +12,7 @@
 
 class NeuralNet {
 public:
+    float learnRate;
     float loss;
     size_t epochLength;
 
@@ -36,7 +37,9 @@ public:
     
 
     NeuralNet() : 
-        loss(0), 
+        learnRate(0.05),
+        loss(0),
+        epochLength(3),
         costFunction(CostFunctions::mse),
         dCostFunction(CostFunctions::dMse)
     {}
@@ -61,12 +64,12 @@ public:
                 layers[i].weights[k].resize(layers[i].sizeIn);
                 layers[i].delta_weights[k].resize(layers[i].sizeIn);
             }
-            if (i > 0) {
-                layers[i].wSum.resize(layers[i].sizeIn);
-            }
         }
-        for (size_t i = 1; i < layers.size() - 1; ++i) {
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
             layers[i].delta_nodes.resize(layers[i].sizeIn);
+        }
+        for (size_t i = 1; i < layers.size(); ++i) {
+            layers[i].wSum.resize(layers[i].sizeIn);
         }
     }
 
@@ -127,14 +130,15 @@ private:
     void forwardPropagate() {
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             for (size_t k = 0; k < layers[i].sizeOut; ++k) {
-                layers[i+1].wSum[i] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
-                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[i]);
+                layers[i+1].wSum[k] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
+                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[k]);
             }
         }
     }
 
     void backPropagate(const std::vector<float>& target) {
         const float epoch = static_cast<float>(epochLength);
+        // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
         for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
             const float bpTerm = statpack::dSigmoid(layers[lastLayer].wSum[k]) * dCostFunction(layers[lastLayer].nodes[k], target[k]);
@@ -161,6 +165,15 @@ private:
     }
 
     void applyDeltas() {
-
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                for (size_t n = 0; n < layers[i].sizeIn; ++n) {
+                    layers[i].weights[k][n] -= layers[i].delta_weights[k][n] * learnRate; 
+                    layers[i].delta_weights[k][n] = 0;
+                }
+                layers[i].biases[k] -= layers[i].delta_biases[k] * learnRate;
+                layers[i].delta_biases[k] = 0;
+            }
+        }
     }
 };
