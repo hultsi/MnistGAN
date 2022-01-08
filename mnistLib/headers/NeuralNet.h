@@ -13,11 +13,20 @@
 class NeuralNet {
 public:
     float learnRate;
-    float loss;
-    size_t epochLength;
+    float inputMin;
+    float inputMax;
+    float targetMin;
+    float targetMax;
+    float activationMin;
+    float activationMax;
 
     std::function<float(const std::vector<float>&, const std::vector<float>&)> costFunction;
     std::function<float(float, float)> dCostFunction;
+
+    std::function<float(float)> activationFunction;
+    std::function<float(float)> dActivationFunction;
+
+    std::vector<float> targetVector;
 
     struct Layer {
         size_t sizeIn;
@@ -37,11 +46,15 @@ public:
     
 
     NeuralNet() : 
-        learnRate(0.05),
-        loss(0),
-        epochLength(3),
+        learnRate(0.01f),
+        inputMin(0.0f),
+        inputMax(1.0f),
+        targetMin(0.0f),
+        targetMax(1.0f),
         costFunction(CostFunctions::mse),
-        dCostFunction(CostFunctions::dMse)
+        dCostFunction(CostFunctions::dMse),
+        activationFunction(ActivationFunctions::sigmoid),
+        dActivationFunction(ActivationFunctions::dSigmoid)
     {}
 
     void addLayer(size_t size) {
@@ -71,9 +84,12 @@ public:
         for (size_t i = 1; i < layers.size(); ++i) {
             layers[i].wSum.resize(layers[i].sizeIn);
         }
+        targetVector.resize(layers[layers.size() - 1].sizeIn);
     }
 
-    void randomizeWeightsAndBiases() {
+    void randomizeWeightsAndBiases(unsigned int seed = 0) {
+        statpack::Random::seed(seed);
+
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             for (size_t m = 0; m < layers[i].biases.size(); ++m) {
                 layers[i].biases[m] = statpack::Random::Float(-1, 1);
@@ -86,20 +102,54 @@ public:
         }
     }
 
-    void train(const std::vector<float> &target) {
+    float train(const std::vector<float> &inputs, const std::vector<float> &target, const float epoch = 1) {
 #ifdef CUSTOM_DEBUG
+        assert(inputs.size() == layers[0].weights[0].size() && "Input vector has an incorrect size.");
         assert(target.size() == layers[layers.size()-1].nodes.size() && "Target and ouput vectors have different lengths.");
 #endif
-        forwardPropagate();
-        loss = costFunction(target, layers[layers.size()- 1].nodes);
-        backPropagate(target);
-        applyDeltas();
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            layers[0].nodes[i] = statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
+        }
+        for (size_t i = 0; i < target.size(); ++i) {
+            targetVector[i] = statpack::normalize(target[i], targetMin, targetMax, activationMin, activationMax); // output limits depends on the activation function
+        }
+        
+        forwardPropagate(inputs);
+        backPropagate(targetVector, epoch);
+        return costFunction(targetVector, layers[layers.size() - 1].nodes);
+    }
+
+    std::vector<float> test(const std::vector<float> &inputs) {
+        forwardPropagate(inputs);
+        return layers[layers.size() - 1].nodes;
+    }
+    
+    void applyDeltas() {
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                for (size_t n = 0; n < layers[i].sizeIn; ++n) {
+                    layers[i].weights[k][n] -= layers[i].delta_weights[k][n] * learnRate; 
+                    layers[i].delta_weights[k][n] = 0;
+                }
+                layers[i].biases[k] -= layers[i].delta_biases[k] * learnRate;
+                layers[i].delta_biases[k] = 0;
+            }
+        }
     }
 
     void setCostFunction(std::string name) {
         if (name == "mse") {
             costFunction = CostFunctions::mse;
             dCostFunction = CostFunctions::dMse;
+        }
+    }
+
+    void setActivationFunction(std::string name) {
+        if (name == "sigmoid") {
+            activationFunction = ActivationFunctions::sigmoid;
+            dActivationFunction = ActivationFunctions::dSigmoid;
+            activationMin = 0.0f;
+            activationMax = 1.0f;
         }
     }
 
@@ -127,24 +177,40 @@ private:
         }
     };
 
-    void forwardPropagate() {
-        for (size_t i = 0; i < layers.size() - 1; ++i) {
+    struct ActivationFunctions {
+        static float sigmoid(float x) {
+            return 1.0f / (1.0f + std::exp(-x));
+        }
+
+        static float dSigmoid(float x) {
+            const float s = sigmoid(x);
+            return s * (1.0f - s);
+        }
+    };
+
+    void forwardPropagate(const std::vector<float> &inputs) {
+        // First layer calculation differs slightly from the rest
+        for (size_t k = 0; k < layers[0].sizeOut; ++k) {
+            layers[1].wSum[k] = statpack::weightedSum(inputs, layers[0].weights[k]) + layers[0].biases[k];
+            layers[1].nodes[k] = activationFunction(layers[1].wSum[k]);
+        }
+
+        for (size_t i = 1; i < layers.size() - 1; ++i) {
             for (size_t k = 0; k < layers[i].sizeOut; ++k) {
                 layers[i+1].wSum[k] = statpack::weightedSum(layers[i].nodes, layers[i].weights[k]) + layers[i].biases[k];
-                layers[i+1].nodes[k] = statpack::sigmoid(layers[i+1].wSum[k]);
+                layers[i+1].nodes[k] = activationFunction(layers[i+1].wSum[k]);
             }
         }
     }
 
-    void backPropagate(const std::vector<float>& target) {
-        const float epoch = static_cast<float>(epochLength);
+    void backPropagate(const std::vector<float>& target, const float epoch) {
         // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
         for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
-            const float bpTerm = statpack::dSigmoid(layers[lastLayer].wSum[k]) * dCostFunction(layers[lastLayer].nodes[k], target[k]);
+            const float bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(layers[lastLayer].nodes[k], target[k]);
             for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
                 layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
-                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm;
+                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm; // / layers[lastLayer].sizeIn;
             }
             layers[lastLayer - 1].delta_biases[k] += bpTerm / epoch;
         }
@@ -153,26 +219,13 @@ private:
         
         for (size_t i = layers.size() - 2; i > 0; --i) {
             for (size_t k = 0; k < layers[i].sizeIn; ++k) {
-                const float bpTerm = statpack::dSigmoid(layers[i].wSum[k]) * layers[i].delta_nodes[k];
+                const float bpTerm = dActivationFunction(layers[i].wSum[k]) * layers[i].delta_nodes[k];
                 for (size_t n = 0; n < layers[i - 1].sizeIn; ++n) {
                     layers[i - 1].delta_weights[k][n] += layers[i - 1].nodes[n] * bpTerm / epoch;
-                    layers[i - 1].delta_nodes[n] += layers[i - 1].weights[k][n] * bpTerm;
+                    layers[i - 1].delta_nodes[n] += layers[i - 1].weights[k][n] * bpTerm / layers[i].sizeIn;
                 }
                 layers[i - 1].delta_biases[k] += bpTerm / epoch;
                 layers[i].delta_nodes[k] = 0;
-            }
-        }
-    }
-
-    void applyDeltas() {
-        for (size_t i = 0; i < layers.size() - 1; ++i) {
-            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
-                for (size_t n = 0; n < layers[i].sizeIn; ++n) {
-                    layers[i].weights[k][n] -= layers[i].delta_weights[k][n] * learnRate; 
-                    layers[i].delta_weights[k][n] = 0;
-                }
-                layers[i].biases[k] -= layers[i].delta_biases[k] * learnRate;
-                layers[i].delta_biases[k] = 0;
             }
         }
     }

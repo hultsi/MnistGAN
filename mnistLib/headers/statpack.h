@@ -6,6 +6,7 @@
 #include <random>
 #include <cmath>
 #include <cassert>
+#include <iostream>
 
 namespace statpack {
     class Random {
@@ -61,6 +62,11 @@ namespace statpack {
         const T s = sigmoid(x);
         return s * (static_cast<T>(1) - s);
     }
+
+    template <typename T>
+    T normalize(const T input, const T min0, const T max0, const T min1, const T max1) {
+        return (max1 - min1) / (max0 - min0) * (input - max0) + max1;
+    }
 }
 
 /**
@@ -92,7 +98,7 @@ namespace statpack {
     }
 
     template <typename T>
-    float weightedSum(std::vector<T>& inputs, std::vector<T> &weights) {
+    float weightedSum(const std::vector<T>& inputs, const std::vector<T> &weights) {
 #ifdef CUSTOM_DEBUG
         assert(!(inputs.size() != weights.size()) && "Vector sizes are not equal.");
 #endif
