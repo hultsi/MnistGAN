@@ -92,11 +92,11 @@ public:
 
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             for (size_t m = 0; m < layers[i].biases.size(); ++m) {
-                layers[i].biases[m] = statpack::Random::Float(-1, 1);
+                layers[i].biases[m] = statpack::Random::Float(-3, 3);
             }
             for (size_t m = 0; m < layers[i].weights.size(); ++m) {
                 for (size_t k = 0; k < layers[i].weights[m].size(); ++k) {
-                    layers[i].weights[m][k] = statpack::Random::Float(-1, -1);
+                    layers[i].weights[m][k] = statpack::Random::Float(-3, -3);
                 }
             }
         }
@@ -119,9 +119,18 @@ public:
         return costFunction(targetVector, layers[layers.size() - 1].nodes);
     }
 
-    std::vector<float> test(const std::vector<float> &inputs) {
+    std::vector<float> generate(const std::vector<float> &inputs) {
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            layers[0].nodes[i] = statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
+        }
         forwardPropagate(inputs);
-        return layers[layers.size() - 1].nodes;
+
+        std::vector<float> out;
+        out.resize(layers[layers.size() - 1].nodes.size());
+        for (size_t i = 0; i < layers[layers.size() - 1].nodes.size(); ++i) {
+            out[i] = statpack::normalize(layers[layers.size() - 1].nodes[i], activationMin, activationMax, targetMin, targetMax);
+        }
+        return out;
     }
     
     void applyDeltas() {
@@ -175,6 +184,40 @@ private:
         static float dMse(float observed, float predicted) {
             return 2 * (observed - predicted);
         }
+
+        static float logDz(const std::vector<float> &predicted, const bool realData = true) {
+            float mse = 0;
+            if (realData) {
+                for (size_t i = 0; i < predicted.size(); ++i) {
+                    mse += (predicted[i] <= 0 ? -std::log(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
+                }
+            } else {
+                for (size_t i = 0; i < predicted.size(); ++i) {
+                    mse += (predicted[i] >= 1 ? -std::log(std::numeric_limits<float>::min()) : -std::log(1 - predicted[i]));
+                }
+            }
+            return mse / predicted.size();
+        }
+
+        static float dLogDz(float predicted, const bool realData = true) {
+            if (realData) {
+                return (predicted <= 0 ? -std::log(std::numeric_limits<float>::min()) : -(1 - std::log(predicted)));
+            } else {
+                return predicted;
+            }
+        }
+
+        // static float logGdz(const std::vector<float> &predicted) {
+        //     float mse = 0;
+        //     for (size_t i = 0; i < predicted.size(); ++i) {
+        //         mse += (predicted[i] <= 0 ? -std::log(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
+        //     }
+        //     return mse / predicted.size();
+        // }
+
+        // static float dLogGdz(float predicted) {
+        //     return (predicted <= 0 ? -std::log(std::numeric_limits<float>::min()) : -(1 - std::log(predicted)));
+        // }
     };
 
     struct ActivationFunctions {
@@ -210,7 +253,7 @@ private:
             const float bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(layers[lastLayer].nodes[k], target[k]);
             for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
                 layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
-                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm; // / layers[lastLayer].sizeIn;
+                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm / layers[lastLayer].sizeIn;
             }
             layers[lastLayer - 1].delta_biases[k] += bpTerm / epoch;
         }

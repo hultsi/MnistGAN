@@ -9,8 +9,6 @@ project(MnistNN VERSION 0.0.1 DESCRIPTION "Random MnistGAN library")
 # Bundle library
 add_library(${PROJECT_NAME} STATIC
     src/mnistParser.cpp
-    src/statpack.cpp
-    src/ganTrain.cpp
 )
 
 # TODO: change to PRIVATE and create public interface ?
