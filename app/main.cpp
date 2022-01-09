@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     while (true) {
         // Run N number of epochs and check loss
         constexpr size_t iterations = 1;
-        float loss = 0;
+        // float loss = 0;
         for (size_t k = 0; k < iterations; ++k) {
             // Run over one epoch set
             for (size_t i = 0; i < epoch; ++i) {
