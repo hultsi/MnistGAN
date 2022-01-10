@@ -103,7 +103,7 @@ public:
         }
     }
 
-    float train(const std::vector<float> &inputs, const std::vector<float> &target, const float epoch = 1) {
+    float train(const std::vector<float> &inputs, const std::vector<float> &target, const float epoch = 1, const bool realData = true) {
 #ifdef CUSTOM_DEBUG
         assert(inputs.size() == layers[0].weights[0].size() && "Input vector has an incorrect size.");
         assert(target.size() == layers[layers.size()-1].nodes.size() && "Target and ouput vectors have different lengths.");
@@ -117,7 +117,7 @@ public:
         
         forwardPropagate(inputs);
         backPropagate(targetVector, epoch);
-        return costFunction(layers[layers.size() - 1].nodes, targetVector);
+        return costFunction(layers[layers.size() - 1].nodes, targetVector, realData);
     }
 
     std::vector<float> generate(const std::vector<float> &inputs) {
@@ -133,113 +133,8 @@ public:
         }
         return out;
     }
-    
-    void applyDeltas() {
-        for (size_t i = 0; i < layers.size() - 1; ++i) {
-            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
-                for (size_t n = 0; n < layers[i].sizeIn; ++n) {
-                    layers[i].weights[k][n] -= layers[i].delta_weights[k][n] * learnRate; 
-                    layers[i].delta_weights[k][n] = 0;
-                }
-                layers[i].biases[k] -= layers[i].delta_biases[k] * learnRate;
-                layers[i].delta_biases[k] = 0;
-            }
-        }
-    }
 
-    void setCostFunction(std::string name) {
-        if (name == "mse") {
-            costFunctionPointer = CostFunctions::mse;
-            dCostFunctionPointer = CostFunctions::dMse;
-        } else if (name == "logdz") {
-            costFunctionPointer = CostFunctions::logDz;
-            dCostFunctionPointer = CostFunctions::dLogDz;
-        }
-    }
-
-    void setActivationFunction(std::string name) {
-        if (name == "sigmoid") {
-            activationFunction = ActivationFunctions::sigmoid;
-            dActivationFunction = ActivationFunctions::dSigmoid;
-            activationMin = 0.0f;
-            activationMax = 1.0f;
-        }
-    }
-
-private:
-    std::vector<Layer> layers;
-
-    struct CostFunctions {
-        /**
-         *  The derivatives here are for a _single index_
-         *  and _not_ over a whole set of points (since that is what we need)
-         *  
-         *  Usage of [[maybe_unused]] is due to being able to use single function
-         *  pointer to every cost function easily.
-         */
-        static float mse(const std::vector<float> &predicted, const std::vector<float> &observed = {}, [[maybe_unused]] const bool realData = true) {
-            #ifdef CUSTOM_DEBUG
-                assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
-            #endif
-            float mse = 0;
-            for (size_t i = 0; i < observed.size(); ++i) {
-                mse += std::pow(observed[i] - predicted[i], 2);
-            }
-            return mse / observed.size();
-        }
-
-        static float dMse(float predicted, float observed, [[maybe_unused]] const bool realData = true) {
-            return 2 * (observed - predicted);
-        }
-
-        static float logDz(const std::vector<float> &predicted, [[maybe_unused]] const std::vector<float> &observed = {},  const bool realData = true) {
-            // static constexpr float min = -std::log(std::numeric_limits<float>::min());
-            float mse = 0;
-            if (realData) {
-                for (size_t i = 0; i < predicted.size(); ++i) {
-                    mse += (predicted[i] <= 0 ? -templates::logn(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
-                }
-            } else {
-                for (size_t i = 0; i < predicted.size(); ++i) {
-                    mse += (predicted[i] >= 1 ? -templates::logn(std::numeric_limits<float>::min()) : -std::log(1 - predicted[i]));
-                }
-            }
-            return mse / predicted.size();
-        }
-
-        static float dLogDz(float predicted,  [[maybe_unused]] float observed = 0, const bool realData = true) {
-            if (realData) {
-                return (predicted <= 0 ? -templates::logn(std::numeric_limits<float>::min()) : -(1 - std::log(predicted)));
-            } else {
-                return predicted;
-            }
-        }
-
-        // static float logGdz(const std::vector<float> &predicted) {
-        //     float mse = 0;
-        //     for (size_t i = 0; i < predicted.size(); ++i) {
-        //         mse += (predicted[i] <= 0 ? -std::log(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
-        //     }
-        //     return mse / predicted.size();
-        // }
-
-        // static float dLogGdz(float predicted) {
-        //     return (predicted <= 0 ? -std::log(std::numeric_limits<float>::min()) : -(1 - std::log(predicted)));
-        // }
-    };
-
-    struct ActivationFunctions {
-        static float sigmoid(float x) {
-            return 1.0f / (1.0f + std::exp(-x));
-        }
-
-        static float dSigmoid(float x) {
-            const float s = sigmoid(x);
-            return s * (1.0f - s);
-        }
-    };
-
-    void forwardPropagate(const std::vector<float> &inputs) {
+     void forwardPropagate(const std::vector<float> &inputs) {
         // First layer calculation differs slightly from the rest
         for (size_t k = 0; k < layers[0].sizeOut; ++k) {
             layers[1].wSum[k] = statpack::weightedSum(inputs, layers[0].weights[k]) + layers[0].biases[k];
@@ -254,11 +149,11 @@ private:
         }
     }
 
-    void backPropagate(const std::vector<float>& target, const float epoch) {
+    void backPropagate(const std::vector<float>& target, const float epoch = 1, const bool realData = true) {
         // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
         for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
-            const float bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(target[k], layers[lastLayer].nodes[k]);
+            const float bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(target[k], layers[lastLayer].nodes[k], realData);
             for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
                 layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
                 layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm / layers[lastLayer].sizeIn;
@@ -280,6 +175,113 @@ private:
             }
         }
     }
+
+    void applyDeltas() {
+        for (size_t i = 0; i < layers.size() - 1; ++i) {
+            for (size_t k = 0; k < layers[i].sizeOut; ++k) {
+                for (size_t n = 0; n < layers[i].sizeIn; ++n) {
+                    layers[i].weights[k][n] -= layers[i].delta_weights[k][n] * learnRate; 
+                    layers[i].delta_weights[k][n] = 0;
+                }
+                layers[i].biases[k] -= layers[i].delta_biases[k] * learnRate;
+                layers[i].delta_biases[k] = 0;
+            }
+        }
+    }
+
+    void setCostFunction(std::string name) {
+        if (name == "mse") {
+            costFunctionPointer = CostFunctions::mse;
+            dCostFunctionPointer = CostFunctions::dMse;
+        } else if (name == "log-dz") {
+            costFunctionPointer = CostFunctions::logDz;
+            dCostFunctionPointer = CostFunctions::dLogDz;
+        } else if (name == "log-gdz") {
+            costFunctionPointer = CostFunctions::logGdz;
+            dCostFunctionPointer = CostFunctions::dLogGdz;
+        }
+    }
+
+    void setActivationFunction(std::string name) {
+        if (name == "sigmoid") {
+            activationFunction = ActivationFunctions::sigmoid;
+            dActivationFunction = ActivationFunctions::dSigmoid;
+            activationMin = 0.0f;
+            activationMax = 1.0f;
+        }
+    }
+
+private:
+    std::vector<Layer> layers;
+
+    struct CostFunctions {
+        /**
+         *  The derivatives here are for a _single index_
+         *  and _not_ over a whole set of points (since that is what we need)
+         *  
+         *  Usage of [[maybe_unused]] is to be able to use single function
+         *  pointer for every cost function easily.
+         */
+        static float mse(const std::vector<float> &predicted, const std::vector<float> &observed = {}, [[maybe_unused]] const bool realData = true) {
+            #ifdef CUSTOM_DEBUG
+                assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
+            #endif
+            float out = 0;
+            for (size_t i = 0; i < observed.size(); ++i) {
+                out += std::pow(observed[i] - predicted[i], 2);
+            }
+            return out / observed.size();
+        }
+
+        static float dMse(float predicted, float observed, [[maybe_unused]] const bool realData = true) {
+            return 2 * (observed - predicted);
+        }
+
+        static float logDz(const std::vector<float> &predicted, [[maybe_unused]] const std::vector<float> &observed = {},  const bool realData = true) {
+            float out = 0;
+            if (realData) {
+                for (size_t i = 0; i < predicted.size(); ++i) {
+                    out += (predicted[i] <= 0 ? -templates::logn(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
+                }
+            } else {
+                for (size_t i = 0; i < predicted.size(); ++i) {
+                    out += (predicted[i] >= 1 ? -templates::logn(std::numeric_limits<float>::min()) : -std::log(1 - predicted[i]));
+                }
+            }
+            return out / predicted.size();
+        }
+
+        static float dLogDz(float predicted, [[maybe_unused]] float observed = 0, const bool realData = true) {
+            if (realData) {
+                return -1 / predicted;
+            } else {
+                return 1 / (1 - predicted);
+            }
+        }
+
+        static float logGdz(const std::vector<float> &predicted, [[maybe_unused]] const std::vector<float> &observed = {}, [[maybe_unused]] const bool realData = true) {
+            float out = 0;
+            for (size_t i = 0; i < predicted.size(); ++i) {
+                out += (predicted[i] <= 0 ? -std::log(std::numeric_limits<float>::min()) : -std::log(predicted[i]));
+            }
+            return out / predicted.size();
+        }
+
+        static float dLogGdz(float predicted, [[maybe_unused]] float observed = 0, [[maybe_unused]] const bool realData = true) {
+            return predicted - 1;
+        }
+    };
+
+    struct ActivationFunctions {
+        static float sigmoid(float x) {
+            return 1.0f / (1.0f + std::exp(-x));
+        }
+
+        static float dSigmoid(float x) {
+            const float s = sigmoid(x);
+            return s * (1.0f - s);
+        }
+    };
 
     float costFunction(const std::vector<float> &predicted, const std::vector<float> &observed = {}, const bool realData = true) {
         return costFunctionPointer(predicted, observed, realData);
