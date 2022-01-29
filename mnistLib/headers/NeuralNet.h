@@ -149,6 +149,7 @@ public:
         }
     }
 
+    // Todo: change cost function target to wSum and remove argument
     void backPropagate(const std::vector<float>& target, const float epoch = 1, const bool realData = true) {
         // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
@@ -253,8 +254,14 @@ private:
 
         static float dLogDz(float predicted, [[maybe_unused]] float observed = 0, const bool realData = true) {
             if (realData) {
+                if (predicted <= .0001) {
+                    return -9999;
+                }
                 return -1 / predicted;
             } else {
+                if (predicted >= .9999) {
+                    return 9999;
+                }
                 return 1 / (1 - predicted);
             }
         }

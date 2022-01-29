@@ -9,14 +9,13 @@ int main(int argc, char *argv[]) {
     if (argc >= 3) {
         images = argv[1];
     }
-    std::vector<float> real { 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
+    std::vector<std::vector<float>> real { { 1,0,1,0 } };
 
     // Set up generator
     NeuralNet generator;
-    generator.learnRate = .1;
+    generator.learnRate = .001;
     generator.addLayer(1);
     generator.addLayer(4);
-    generator.addLayer(1);
     generator.setCostFunction("log-gdz");
     generator.setActivationFunction("sigmoid");
     generator.build();
@@ -24,13 +23,11 @@ int main(int argc, char *argv[]) {
     generator.inputMin = -1;
     generator.inputMax = 1;
     generator.targetMin = 0;
-    generator.targetMax = 100;
+    generator.targetMax = 1;
 
     // Set up discriminator
     NeuralNet discriminator;
-    discriminator.learnRate = .1;
-    discriminator.addLayer(1);
-    discriminator.addLayer(4);
+    discriminator.learnRate = 1;
     discriminator.addLayer(4);
     discriminator.addLayer(1);
     discriminator.setCostFunction("log-dz");
@@ -42,6 +39,7 @@ int main(int argc, char *argv[]) {
     discriminator.targetMin = 0;
     discriminator.targetMax = 1;
 
+    statpack::Random::seed(123);
     int iterations = 0;
     while (true) {
         // Run N number of epochs and check loss
@@ -49,30 +47,30 @@ int main(int argc, char *argv[]) {
         std::vector<float> in = { statpack::Random::Float(-1, 1) };
         std::vector<float> out = generator.generate(in);
         std::vector<float> prob = discriminator.generate(out);
-        // std::cout << "FAKE PRIME PROBABILITY: " << prob[0] << "\n";
+        
         discriminator.backPropagate(prob, 1, false);
         discriminator.applyDeltas();
+
+        // TODO: GENERATOR ACTIVATION FUNCTION NEEDS TO COME FROM DISCRIMINATOR!!!
         generator.backPropagate(prob, 1, false);
         generator.applyDeltas();
         
         // Update discriminator with real data
-        prob = discriminator.generate({ real[statpack::Random::Int(0, real.size() - 1)] });
-        // std::cout << "REAL PRIME PROBABILITY: " << prob[0] << "\n";
+        prob = discriminator.generate(real[statpack::Random::Int(0, real.size() - 1)]);
+
         discriminator.backPropagate(prob, 1, true);
         discriminator.applyDeltas();
 
         ++iterations;
-        if (iterations > 500) {
+        if (iterations > 1000) {
             break;
         }
     }
 
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
-    std::cout << generator.generate({ statpack::Random::Float(-1, 1) })[0] << "\n";
+    std::vector<float> tmp = generator.generate({ -.9 });
+    std::cout << tmp[0] << "\t" << tmp[1] << "\t" << tmp[2] << "\t" << tmp[3] << "\n";
+    std::vector<float> tmp2 = generator.generate({ .3 });
+    std::cout << tmp2[0] << "\t" << tmp2[1] << "\t" << tmp2[2] << "\t" << tmp2[3] << "\n";
 
     std::cout << "Ending...\n";
     return 0;
