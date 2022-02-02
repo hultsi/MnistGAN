@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
     // Set up generator
     NeuralNet generator;
-    generator.learnRate = .001;
+    generator.learnRate = 0.01;
     generator.addLayer(1);
     generator.addLayer(4);
     generator.setCostFunction("log-gdz");
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     // Set up discriminator
     NeuralNet discriminator;
-    discriminator.learnRate = 1;
+    discriminator.learnRate = 0.01;
     discriminator.addLayer(4);
     discriminator.addLayer(1);
     discriminator.setCostFunction("log-dz");
@@ -41,18 +41,17 @@ int main(int argc, char *argv[]) {
 
     statpack::Random::seed(123);
     int iterations = 0;
+
     while (true) {
         // Run N number of epochs and check loss
         // Update both with fake data
-        std::vector<float> in = { statpack::Random::Float(-1, 1) };
+        std::vector<float> in = { statpack::Random::Float(-1.0, 1.0) };
         std::vector<float> out = generator.generate(in);
         std::vector<float> prob = discriminator.generate(out);
         
         discriminator.backPropagate(prob, 1, false);
+        generator.backPropagate(discriminator.layers[0].weights[0], prob[0], 1, false);
         discriminator.applyDeltas();
-
-        // TODO: GENERATOR ACTIVATION FUNCTION NEEDS TO COME FROM DISCRIMINATOR!!!
-        generator.backPropagate(prob, 1, false);
         generator.applyDeltas();
         
         // Update discriminator with real data
@@ -62,11 +61,10 @@ int main(int argc, char *argv[]) {
         discriminator.applyDeltas();
 
         ++iterations;
-        if (iterations > 1000) {
+        if (iterations > 10000) {
             break;
         }
     }
-
     std::vector<float> tmp = generator.generate({ -.9 });
     std::cout << tmp[0] << "\t" << tmp[1] << "\t" << tmp[2] << "\t" << tmp[3] << "\n";
     std::vector<float> tmp2 = generator.generate({ .3 });
