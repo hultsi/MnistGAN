@@ -20,7 +20,7 @@ public:
     float targetMax;
     float activationMin;
     float activationMax;
-
+    
     std::function<float(const std::vector<float>&, const std::vector<float>&, bool)> costFunctionPointer;
     std::function<float(float, float, bool)> dCostFunctionPointer;
 
@@ -45,6 +45,7 @@ public:
         };
     };
     
+    std::vector<Layer> layers;
 
     NeuralNet() : 
         learnRate(0.01f),
@@ -130,6 +131,7 @@ public:
         out.resize(layers[layers.size() - 1].nodes.size());
         for (size_t i = 0; i < layers[layers.size() - 1].nodes.size(); ++i) {
             out[i] = statpack::normalize(layers[layers.size() - 1].nodes[i], activationMin, activationMax, targetMin, targetMax);
+            // out[i] = layers[layers.size() - 1].nodes[i];
         }
         return out;
     }
@@ -149,11 +151,40 @@ public:
         }
     }
 
+    // Todo: change cost function target to wSum and remove argument
     void backPropagate(const std::vector<float>& target, const float epoch = 1, const bool realData = true) {
         // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
         for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
             const float bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(target[k], layers[lastLayer].nodes[k], realData);
+            for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
+                layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
+                layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm / layers[lastLayer].sizeIn;
+            }
+            layers[lastLayer - 1].delta_biases[k] += bpTerm / epoch;
+        }
+
+        if (lastLayer - 1 == 0) return;
+        
+        for (size_t i = layers.size() - 2; i > 0; --i) {
+            for (size_t k = 0; k < layers[i].sizeIn; ++k) {
+                const float bpTerm = dActivationFunction(layers[i].wSum[k]) * layers[i].delta_nodes[k];
+                for (size_t n = 0; n < layers[i - 1].sizeIn; ++n) {
+                    layers[i - 1].delta_weights[k][n] += layers[i - 1].nodes[n] * bpTerm / epoch;
+                    layers[i - 1].delta_nodes[n] += layers[i - 1].weights[k][n] * bpTerm / layers[i].sizeIn;
+                }
+                layers[i - 1].delta_biases[k] += bpTerm / epoch;
+                layers[i].delta_nodes[k] = 0;
+            }
+        }
+    }
+
+    // Todo: change cost function target to wSum and remove argument
+    void backPropagate(const std::vector<float>& weights, const float target, const float epoch, const bool realData = true) {
+        // First layer calculation differs slightly from the rest
+        const size_t lastLayer = layers.size() - 1;
+        for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
+            const float bpTerm = weights[k] * dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(target, layers[lastLayer].nodes[k], realData);
             for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
                 layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
                 layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm / layers[lastLayer].sizeIn;
@@ -212,8 +243,6 @@ public:
     }
 
 private:
-    std::vector<Layer> layers;
-
     struct CostFunctions {
         /**
          *  The derivatives here are for a _single index_
@@ -253,8 +282,14 @@ private:
 
         static float dLogDz(float predicted, [[maybe_unused]] float observed = 0, const bool realData = true) {
             if (realData) {
+                if (predicted <= .0001) {
+                    return -9999;
+                }
                 return -1 / predicted;
             } else {
+                if (predicted >= .9999) {
+                    return 9999;
+                }
                 return 1 / (1 - predicted);
             }
         }
