@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fstream>
 #include <vector>
 #include <cstddef>
 #include <functional>
@@ -21,6 +20,8 @@ public:
     float activationMin;
     float activationMax;
     
+    std::ofstream outLossStream;
+
     std::function<float(const std::vector<float>&, const std::vector<float>&, bool)> costFunctionPointer;
     std::function<float(float, float, bool)> dCostFunctionPointer;
 
@@ -94,11 +95,11 @@ public:
 
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             for (size_t m = 0; m < layers[i].biases.size(); ++m) {
-                layers[i].biases[m] = statpack::Random::Float(-3, 3);
+                layers[i].biases[m] = statpack::Random::Float(-10, 10);
             }
             for (size_t m = 0; m < layers[i].weights.size(); ++m) {
                 for (size_t k = 0; k < layers[i].weights[m].size(); ++k) {
-                    layers[i].weights[m][k] = statpack::Random::Float(-3, -3);
+                    layers[i].weights[m][k] = statpack::Random::Float(-10, 10);
                 }
             }
         }
@@ -131,7 +132,6 @@ public:
         out.resize(layers[layers.size() - 1].nodes.size());
         for (size_t i = 0; i < layers[layers.size() - 1].nodes.size(); ++i) {
             out[i] = statpack::normalize(layers[layers.size() - 1].nodes[i], activationMin, activationMax, targetMin, targetMax);
-            // out[i] = layers[layers.size() - 1].nodes[i];
         }
         return out;
     }
