@@ -15,8 +15,9 @@ int main(int argc, char *argv[]) {
 
     // Set up generator
     NeuralNet generator;
-    generator.learnRate = .01;
+    generator.learnRate = .1;
     generator.addLayer(1);
+    generator.addLayer(2);
     generator.addLayer(4);
     generator.setCostFunction("log-gdz");
     generator.setActivationFunction("sigmoid");
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
 
     // Set up discriminator
     NeuralNet discriminator;
-    discriminator.learnRate = .01;
+    discriminator.learnRate = .1;
     discriminator.addLayer(4);
     discriminator.addLayer(1);
     discriminator.setCostFunction("log-dz");
@@ -47,9 +48,29 @@ int main(int argc, char *argv[]) {
     int iterations = 0;
     std::ofstream genLossStream("./gloss.txt");
     std::ofstream discLossStream("./dloss.txt");
+    constexpr const int BATCH_SIZE = 5;
     while (true) {
         // Run N number of epochs and check loss
         // Update both with fake data
+        for (int k = 0; k < BATCH_SIZE; ++k) {
+            std::vector<float> in = { statpack::Random::Float(-1.0, 1.0) };
+            std::vector<float> out = generator.generate(in);
+            std::vector<float> prob = discriminator.generate(out);
+            discriminator.backPropagate(prob, BATCH_SIZE, false);
+            generator.backPropagate(prob, BATCH_SIZE, false);
+        }
+        discriminator.applyDeltas();
+        generator.applyDeltas();
+
+        // Update discriminator with real data
+        for (int k = 0; k < BATCH_SIZE; ++k) {
+            const int ind = statpack::Random::Int(0, real.size() - 1);
+            std::vector<float> prob = discriminator.generate(real[ind]);
+            discriminator.backPropagate(prob, BATCH_SIZE, true);
+        }
+        discriminator.applyDeltas();
+
+        // Calculate losses
         std::vector<float> in = { statpack::Random::Float(-1.0, 1.0) };
         std::vector<float> out = generator.generate(in);
         std::vector<float> prob = discriminator.generate(out);
@@ -58,19 +79,6 @@ int main(int argc, char *argv[]) {
         genLossStream << loss << "\n";
         loss = discriminator.costFunctionPointer(prob, {}, false);
         discLossStream << loss << "\n";
-
-        discriminator.backPropagate(prob, 1, false);
-        generator.backPropagate(prob, 1, false);
-        discriminator.applyDeltas();
-        generator.applyDeltas();
-        
-        // Update discriminator with real data
-        for (int k = 0; k < 5; ++k) {
-            const int ind = statpack::Random::Int(0, real.size() - 1);
-            prob = discriminator.generate(real[ind]);
-            discriminator.backPropagate(prob, 1, true);
-            discriminator.applyDeltas();
-        }
 
         ++iterations;
         if (iterations > 50000) {

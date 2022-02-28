@@ -20,7 +20,10 @@ public:
     float activationMin;
     float activationMax;
     
-    NeuralNet *GANLink = nullptr;
+    // Generator part of GAN needs knowledge of the first layer of the
+    // GAN's discriminator. Set this to point to the discriminator of
+    // the GAN in the generator.
+    const NeuralNet *GANLink = nullptr;
 
     std::ofstream outLossStream;
 
@@ -153,7 +156,7 @@ public:
         }
     }
 
-    void backPropagate(const std::vector<float>& target, const float epoch = 1, const bool realData = true) {
+    void backPropagate(const std::vector<float>& target, const float batchSize = 1, const bool realData = true) {
         // First layer calculation differs slightly from the rest
         const size_t lastLayer = layers.size() - 1;
         for (size_t k = 0; k < layers[lastLayer].sizeIn; ++k) {
@@ -164,10 +167,10 @@ public:
                 bpTerm = dActivationFunction(layers[lastLayer].wSum[k]) * dCostFunction(target[k], layers[lastLayer].nodes[k], realData);
             }
             for (size_t n = 0; n < layers[lastLayer - 1].sizeIn; ++n) {
-                layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / epoch;
+                layers[lastLayer - 1].delta_weights[k][n] += layers[lastLayer - 1].nodes[n] * bpTerm / batchSize;
                 layers[lastLayer - 1].delta_nodes[n] += layers[lastLayer - 1].weights[k][n] * bpTerm / layers[lastLayer].sizeIn;
             }
-            layers[lastLayer - 1].delta_biases[k] += bpTerm / epoch;
+            layers[lastLayer - 1].delta_biases[k] += bpTerm / batchSize;
         }
 
         if (lastLayer - 1 == 0) return;
@@ -176,10 +179,10 @@ public:
             for (size_t k = 0; k < layers[i].sizeIn; ++k) {
                 const float bpTerm = dActivationFunction(layers[i].wSum[k]) * layers[i].delta_nodes[k];
                 for (size_t n = 0; n < layers[i - 1].sizeIn; ++n) {
-                    layers[i - 1].delta_weights[k][n] += layers[i - 1].nodes[n] * bpTerm / epoch;
+                    layers[i - 1].delta_weights[k][n] += layers[i - 1].nodes[n] * bpTerm / batchSize;
                     layers[i - 1].delta_nodes[n] += layers[i - 1].weights[k][n] * bpTerm / layers[i].sizeIn;
                 }
-                layers[i - 1].delta_biases[k] += bpTerm / epoch;
+                layers[i - 1].delta_biases[k] += bpTerm / batchSize;
                 layers[i].delta_nodes[k] = 0;
             }
         }
