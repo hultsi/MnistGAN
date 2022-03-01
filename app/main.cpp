@@ -15,9 +15,9 @@ int main(int argc, char *argv[]) {
 
     // Set up generator
     NeuralNet generator;
-    generator.learnRate = .1;
+    generator.learnRate = .05;
     generator.addLayer(1);
-    generator.addLayer(2);
+    // generator.addLayer(4);
     generator.addLayer(4);
     generator.setCostFunction("log-gdz");
     generator.setActivationFunction("sigmoid");
@@ -30,8 +30,9 @@ int main(int argc, char *argv[]) {
 
     // Set up discriminator
     NeuralNet discriminator;
-    discriminator.learnRate = .1;
+    discriminator.learnRate = .05;
     discriminator.addLayer(4);
+    // discriminator.addLayer(1);
     discriminator.addLayer(1);
     discriminator.setCostFunction("log-dz");
     discriminator.setActivationFunction("sigmoid");
@@ -44,29 +45,34 @@ int main(int argc, char *argv[]) {
 
     generator.GANLink = &discriminator;
 
-    statpack::Random::seed(123);
+    statpack::Random::seed(200);
     int iterations = 0;
-    std::ofstream genLossStream("./gloss.txt");
-    std::ofstream discLossStream("./dloss.txt");
-    constexpr const int BATCH_SIZE = 5;
+    std::ofstream genLossStream("./g_loss.txt");
+    std::ofstream discLossStream("./d_loss.txt");
+    std::ofstream genWeightStream("./g_w1.txt");
+    std::ofstream genBiasStream("./g_b1.txt");
+    std::ofstream discWeightStream("./d_w1.txt");
+    std::ofstream discBiasStream("./d_b1.txt");
+    constexpr const int BATCH_SIZE_1 = 5;
+    constexpr const int BATCH_SIZE_2 = 1;
     while (true) {
         // Run N number of epochs and check loss
         // Update both with fake data
-        for (int k = 0; k < BATCH_SIZE; ++k) {
+        for (int k = 0; k < BATCH_SIZE_1; ++k) {
             std::vector<float> in = { statpack::Random::Float(-1.0, 1.0) };
             std::vector<float> out = generator.generate(in);
             std::vector<float> prob = discriminator.generate(out);
-            discriminator.backPropagate(prob, BATCH_SIZE, false);
-            generator.backPropagate(prob, BATCH_SIZE, false);
+            discriminator.backPropagate(prob, BATCH_SIZE_1, false);
+            generator.backPropagate(prob, BATCH_SIZE_1, false);
         }
         discriminator.applyDeltas();
         generator.applyDeltas();
 
         // Update discriminator with real data
-        for (int k = 0; k < BATCH_SIZE; ++k) {
+        for (int k = 0; k < BATCH_SIZE_2; ++k) {
             const int ind = statpack::Random::Int(0, real.size() - 1);
             std::vector<float> prob = discriminator.generate(real[ind]);
-            discriminator.backPropagate(prob, BATCH_SIZE, true);
+            discriminator.backPropagate(prob, BATCH_SIZE_2, true);
         }
         discriminator.applyDeltas();
 
@@ -80,13 +86,31 @@ int main(int argc, char *argv[]) {
         loss = discriminator.costFunctionPointer(prob, {}, false);
         discLossStream << loss << "\n";
 
+        genWeightStream << generator.layers[0].weights[0][0] << "\t" <<
+                           generator.layers[0].weights[1][0] << "\t" <<
+                           generator.layers[0].weights[2][0] << "\t" <<
+                           generator.layers[0].weights[3][0] << "\n";
+        genBiasStream << generator.layers[0].biases[0] << "\t" <<
+                         generator.layers[0].biases[1] << "\t" <<
+                         generator.layers[0].biases[2] << "\t" <<
+                         generator.layers[0].biases[3] << "\n";
+        discWeightStream << discriminator.layers[0].weights[0][1] << "\t" <<
+                           discriminator.layers[0].weights[0][2] << "\t" <<
+                           discriminator.layers[0].weights[0][3] << "\t" <<
+                           discriminator.layers[0].weights[0][4] << "\n";
+        discBiasStream << discriminator.layers[0].biases[0] << "\n";
+
         ++iterations;
-        if (iterations > 50000) {
+        if (iterations > 3000) {
             break;
         }
     }
     genLossStream.close();
     discLossStream.close();
+    genWeightStream.close();
+    genBiasStream.close();
+    discWeightStream.close();
+    discBiasStream.close();
 
     std::vector<float> tmp = generator.generate({ -.7 });
     std::cout << tmp[0] << " " << tmp[1] << " " << tmp[2] << " " << tmp[3] << "\n";

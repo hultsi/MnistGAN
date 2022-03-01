@@ -1,3 +1,10 @@
+#########################################################
+# Takes in N number of command line arguments
+# Each argument must be a valid path of a text file
+# Each line in the text file must contain single value
+# Plots line plots from the files
+#########################################################
+
 import sys, os.path, re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +28,6 @@ def doesExist(path):
 
 def linePlot(fname, axs = None):
     splitted = re.split("\\\\|//|\\|/", fname)
-    print(splitted)
     lines = np.loadtxt(fname, delimiter="  ", unpack=True)
     size = len(lines.shape)
     if (axs == None):
@@ -39,8 +45,9 @@ def linePlot(fname, axs = None):
 
 def main(args):
     N = len(args)
-    if (not doesExist(args[0])):
-        return 0
+    for i in range(N):
+        if (not doesExist(args[i])):
+            return 0
     fig, axs = plt.subplots(N, figsize=(10,6))
     if (N == 1):
         axs = [ axs ]
@@ -48,7 +55,6 @@ def main(args):
     fig.suptitle("Plots")
 
     for i in range(N):
-        print(args[i])
         linePlot(args[i], axs[i])
     plt.show()
 

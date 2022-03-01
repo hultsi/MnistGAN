@@ -1,5 +1,5 @@
 /build
 /.vscode
 /data
-/app/dloss.*
-/app/gloss.*
+/app/d_*
+/app/g_*
