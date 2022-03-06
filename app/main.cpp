@@ -15,12 +15,12 @@ int main(int argc, char *argv[]) {
 
     // Set up generator
     NeuralNet generator;
-    generator.learnRate = .05;
+    generator.learnRate = .5;
     generator.addLayer(1);
     // generator.addLayer(4);
     generator.addLayer(4);
     generator.setCostFunction("log-gdz");
-    generator.setActivationFunction("sigmoid");
+    generator.setActivationFunction("relu");
     generator.build();
     generator.randomizeWeightsAndBiases();
     generator.inputMin = -1;
@@ -30,12 +30,13 @@ int main(int argc, char *argv[]) {
 
     // Set up discriminator
     NeuralNet discriminator;
-    discriminator.learnRate = .05;
+    discriminator.learnRate = .5;
     discriminator.addLayer(4);
-    // discriminator.addLayer(1);
+    // discriminator.addLayer(3);
+    // discriminator.addLayer(2);
     discriminator.addLayer(1);
     discriminator.setCostFunction("log-dz");
-    discriminator.setActivationFunction("sigmoid");
+    discriminator.setActivationFunction("relu");
     discriminator.build();
     discriminator.randomizeWeightsAndBiases();
     discriminator.inputMin = generator.targetMin;
@@ -45,7 +46,7 @@ int main(int argc, char *argv[]) {
 
     generator.GANLink = &discriminator;
 
-    statpack::Random::seed(200);
+    statpack::Random::seed();
     int iterations = 0;
     std::ofstream genLossStream("./g_loss.txt");
     std::ofstream discLossStream("./d_loss.txt");
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
     std::ofstream discWeightStream("./d_w1.txt");
     std::ofstream discBiasStream("./d_b1.txt");
     constexpr const int BATCH_SIZE_1 = 5;
-    constexpr const int BATCH_SIZE_2 = 1;
+    constexpr const int BATCH_SIZE_2 = 5;
     while (true) {
         // Run N number of epochs and check loss
         // Update both with fake data

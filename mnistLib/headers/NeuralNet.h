@@ -116,7 +116,7 @@ public:
         assert(target.size() == layers[layers.size()-1].nodes.size() && "Target and ouput vectors have different lengths.");
 #endif
         for (size_t i = 0; i < inputs.size(); ++i) {
-            layers[0].nodes[i] = statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
+            layers[0].nodes[i] = inputs[i]; // statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
         }
         for (size_t i = 0; i < target.size(); ++i) {
             targetVector[i] = statpack::normalize(target[i], targetMin, targetMax, activationMin, activationMax); // output limits depends on the activation function
@@ -127,9 +127,10 @@ public:
         return costFunction(layers[layers.size() - 1].nodes, targetVector, realData);
     }
 
+    // TODO: add batch standardization
     std::vector<float> generate(const std::vector<float> &inputs) {
         for (size_t i = 0; i < inputs.size(); ++i) {
-            layers[0].nodes[i] = statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
+            layers[0].nodes[i] = inputs[i]; // statpack::normalize(inputs[i], inputMin, inputMax, -1.0f, 1.0f); // -1 to 1 works fine
         }
         forwardPropagate(layers[0].nodes);
 
@@ -173,7 +174,7 @@ public:
             layers[lastLayer - 1].delta_biases[k] += bpTerm / batchSize;
         }
 
-        if (lastLayer - 1 == 0) return;
+        if (lastLayer == 1) return;
         
         for (size_t i = layers.size() - 2; i > 0; --i) {
             for (size_t k = 0; k < layers[i].sizeIn; ++k) {
@@ -218,6 +219,11 @@ public:
         if (name == "sigmoid") {
             activationFunction = ActivationFunctions::sigmoid;
             dActivationFunction = ActivationFunctions::dSigmoid;
+            activationMin = 0.0f;
+            activationMax = 1.0f;
+        } else if (name == "relu") {
+            activationFunction = ActivationFunctions::relu;
+            dActivationFunction = ActivationFunctions::dRelu;
             activationMin = 0.0f;
             activationMax = 1.0f;
         }
@@ -296,6 +302,14 @@ private:
         static float dSigmoid(float x) {
             const float s = sigmoid(x);
             return s * (1.0f - s);
+        }
+
+        static float relu(float x) {
+            return std::max(0.0f, x);
+        }
+
+        static float dRelu(float x) {
+            return x > 0 ? 1 : 0;
         }
     };
 
