@@ -52,6 +52,24 @@ namespace statpack {
         int height;
     };
 
+    template <typename T, size_t windowSize>
+    struct MovingMean {
+        std::array<T, windowSize> data{};
+        size_t startIndex;
+        float mean;
+
+        MovingMean() : startIndex(0), mean(0) {};
+
+        float update(T newValue) {
+            T removed = data[startIndex];
+            data[startIndex] = newValue;
+            startIndex = ++startIndex % windowSize;
+
+            mean = mean + ((newValue - removed) / windowSize);
+            return mean;
+        }
+    };
+
     template <typename T>
     T sigmoid(T x) {
         return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
