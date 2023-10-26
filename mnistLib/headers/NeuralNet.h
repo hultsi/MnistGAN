@@ -75,8 +75,8 @@ public:
 #endif
         for (size_t i = 0; i < layers.size() - 1; ++i) {
             // Biases
-            layers[i].biases.resize(layers[i+1].sizeIn);
-            layers[i].delta_biases.resize(layers[i+1].sizeIn);
+            layers[i].biases.resize(layers[i + 1].sizeIn);
+            layers[i].delta_biases.resize(layers[i + 1].sizeIn);
             // Weights
             layers[i].sizeOut = layers[i + 1].sizeIn;
             layers[i].weights.resize(layers[i].sizeOut);
@@ -97,14 +97,13 @@ public:
 
     void randomizeWeightsAndBiases(unsigned int seed = 0) {
         statpack::Random::seed(seed);
-
-        for (size_t i = 0; i < layers.size() - 1; ++i) {
-            for (size_t m = 0; m < layers[i].biases.size(); ++m) {
-                layers[i].biases[m] = statpack::Random::Float(-10, 10);
+        for (auto& layer : layers) {
+            for (auto& bias : layer.biases) {
+                bias = statpack::Random::Float(-10, 10);
             }
-            for (size_t m = 0; m < layers[i].weights.size(); ++m) {
-                for (size_t k = 0; k < layers[i].weights[m].size(); ++k) {
-                    layers[i].weights[m][k] = statpack::Random::Float(-10, 10);
+            for (auto& weightArr : layer.weights) {
+                for (auto& weight : weightArr) {
+                    weight = statpack::Random::Float(-10, 10);
                 }
             }
         }

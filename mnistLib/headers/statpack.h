@@ -15,21 +15,21 @@ namespace statpack {
             engine.seed(rd());
         }
 
-        static void seed(unsigned int value) {
+        static void seed(const unsigned int value) {
             engine.seed(value);
         }
 
-        static int Int(int min, int max) {
+        static int Int(const int min, const int max) {
             std::uniform_int_distribution<int> dist(min,max);
             return dist(engine);
         }
 
-        static float Float(float min, float max) {
+        static float Float(const float min, const float max) {
             std::uniform_real_distribution<float> dist(min, max);
             return dist(engine);
         }
 
-        static double Double(double min, double max) {
+        static double Double(const double min, const double max) {
             std::uniform_real_distribution<double> dist(min,max);
             return dist(engine);
         }
@@ -60,7 +60,7 @@ namespace statpack {
 
         MovingMean() : startIndex(0), mean(0) {};
 
-        float update(T newValue) {
+        float update(const T newValue) {
             T removed = data[startIndex];
             data[startIndex] = newValue;
             startIndex = ++startIndex % windowSize;
@@ -71,12 +71,12 @@ namespace statpack {
     };
 
     template <typename T>
-    T sigmoid(T x) {
+    T sigmoid(const T x) {
         return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
     }
 
     template <typename T>
-    T dSigmoid(T x) {
+    T dSigmoid(const T x) {
         const T s = sigmoid(x);
         return s * (static_cast<T>(1) - s);
     }
@@ -92,7 +92,7 @@ namespace statpack {
  */
 namespace statpack {
     template <typename T>
-    T mse(std::vector<T> &observed, std::vector<T> &predicted) {
+    T mse(const std::vector<T> &observed, const std::vector<T> &predicted) {
         #ifdef CUSTOM_DEBUG
             assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
         #endif
@@ -104,7 +104,7 @@ namespace statpack {
     }
 
     template <typename T>
-    T dMse(std::vector<T> &observed, std::vector<T> &predicted) {
+    T dMse(const std::vector<T> &observed, const std::vector<T> &predicted) {
 #ifdef CUSTOM_DEBUG
         assert(!(observed.size() != predicted.size()) && "Vector sizes are not equal.");
 #endif
@@ -128,7 +128,7 @@ namespace statpack {
     }
 
     template <typename K, int W_OUT, int H_OUT>
-    std::array<K, W_OUT*H_OUT> rescaleImage(std::vector<K> &img, int width, int height) {
+    std::array<K, W_OUT*H_OUT> rescaleImage(const std::vector<K> &img, const int width, const int height) {
         std::array<K, W_OUT*H_OUT> tmp{};
         const float xScale = static_cast<float>(W_OUT) / static_cast<float>(width);
         const float yScale = static_cast<float>(H_OUT) / static_cast<float>(height);
@@ -172,7 +172,7 @@ namespace statpack {
  */
 namespace statpack {
     template <int T>
-    float mean(const std::array<float, T> &inputs) {
+    float mean(const std::array<float, T>& inputs) {
         float y = 0;
         for (int i = 0; i < inputs.size(); ++i) {
             y += inputs[i];
@@ -181,7 +181,7 @@ namespace statpack {
     }
     
     template <int T>
-    float variance(const std::array<float, T> &inputs)  {
+    float variance(const std::array<float, T>& inputs)  {
         float y = 0;
         float m = mean<T>(inputs);
         for (int i = 0; i < inputs.size(); ++i) {
@@ -191,7 +191,7 @@ namespace statpack {
     }
 
     template <int T>
-    std::array<float, T> standardize(const std::array<float, T> &inputs) {
+    std::array<float, T> standardize(const std::array<float, T>& inputs) {
         std::array<float, T> y;
         float mean = mean<T>(inputs);
         float variance = variance<T>(inputs);
@@ -202,7 +202,7 @@ namespace statpack {
     }
 
     template <int T>
-    std::array<float, T> normalize(const std::array<float, T> &inputs, float min0, float max0, float min1, float max1) {
+    std::array<float, T> normalize(const std::array<float, T> &inputs, const float min0, const float max0, const float min1, const float max1) {
         std::array<float, T> y;
         for (int i = 0; i < inputs.size(); i++) {
             y[i] = (max1 - min1)/(max0 - min0)*(inputs[i] - max0) + max1;
@@ -248,7 +248,7 @@ namespace statpack {
     }
 
     template <typename T, int WIDTH, int HEIGHT>
-    ImageVector<T> cropBlackBackground(std::array<T, WIDTH*HEIGHT> image) {
+    ImageVector<T> cropBlackBackground(const std::array<T, WIDTH*HEIGHT>& image) {
         ImageVector<T> imgOut;
         constexpr const int BLACK = 0;
         int xMin = WIDTH;
@@ -280,7 +280,7 @@ namespace statpack {
     }
 
     template <typename K, int W_IN, int H_IN, int W_OUT, int H_OUT>
-    std::array<K, W_OUT*H_OUT> rescaleImage(std::array<K, W_IN*H_IN> img) {
+    std::array<K, W_OUT*H_OUT> rescaleImage(const std::array<K, W_IN*H_IN>& img) {
         std::array<K, W_OUT*H_OUT> tmp{};
         const float xScale = static_cast<float>(W_OUT) / static_cast<float>(W_IN);
         const float yScale = static_cast<float>(H_OUT) / static_cast<float>(H_IN);

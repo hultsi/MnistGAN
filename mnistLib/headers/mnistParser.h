@@ -4,19 +4,19 @@
 #include <array>
 
 namespace mnistParser {
-    constexpr const int IMAGE_PIXELS = 784; // 28x28
+    inline constexpr const int IMAGE_PIXELS = 784; // 28x28
     
-    constexpr const int IMAGE_OFFSET = 16; // 32 * 4 = 128 bits = 16 bytes
-    constexpr const int LABEL_OFFSET = 8; // 32 * 2 = 64 bits = 8 bytes
+    inline constexpr const int IMAGE_OFFSET = 16; // 32 * 4 = 128 bits = 16 bytes
+    inline constexpr const int LABEL_OFFSET = 8; // 32 * 2 = 64 bits = 8 bytes
     
-    constexpr const int TRAIN_DATA_SIZE = 47040016;
-    constexpr const int TRAIN_LABEL_SIZE = 60008;
+    inline constexpr const int TRAIN_DATA_SIZE = 47040016;
+    inline constexpr const int TRAIN_LABEL_SIZE = 60008;
 
-    constexpr const int TEST_DATA_SIZE = 7840016;
-    constexpr const int TEST_LABEL_SIZE = 10008;
+    inline constexpr const int TEST_DATA_SIZE = 7840016;
+    inline constexpr const int TEST_LABEL_SIZE = 10008;
 
-    constexpr const int TRAIN_IMAGE_MAX = 60000;
-    constexpr const int TEST_IMAGE_MAX = 10000;
+    inline constexpr const int TRAIN_IMAGE_MAX = 60000;
+    inline constexpr const int TEST_IMAGE_MAX = 10000;
     
     int flipInt32(int32_t i);
     
