@@ -5,10 +5,10 @@
 namespace mnistParser {
     int flipInt32(int32_t i) {
         uint8_t a,b,c,d;
-        a = i & 255;
-        b = (i >> 8) & 255;
-        c = (i >> 16) & 255;
-        d = (i >> 24) & 255;
+        a = static_cast<uint8_t>(i & 255);
+        b = static_cast<uint8_t>((i >> 8) & 255);
+        c = static_cast<uint8_t>((i >> 16) & 255);
+        d = static_cast<uint8_t>((i >> 24) & 255);
         return ((int32_t)a << 24) + ((int32_t)b << 16) + ((int32_t)c << 8) + ((int32_t)d);
     }
     

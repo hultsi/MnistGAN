@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <algorithm>
 
 #include "NeuralNet.h"
 #include "statpack.h"
@@ -71,7 +72,8 @@ int main(int argc, char *argv[]) {
 
         // Update discriminator with real data
         for (int k = 0; k < BATCH_SIZE_2; ++k) {
-            const int ind = statpack::Random::Int(0, real.size() - 1);
+            const int max = static_cast<int>(std::max(real.size(), static_cast<size_t>(std::numeric_limits<int>::max())));
+            const int ind = statpack::Random::Int(0, max - 1);
             std::vector<float> prob = discriminator.generate(real[ind]);
             discriminator.backPropagate(prob, BATCH_SIZE_2, true);
         }
